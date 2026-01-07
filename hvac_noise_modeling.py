@@ -132,7 +132,7 @@ class FreeFieldReceiver(Node):
 
     def ob_atten(self):
         return OctaveBands( 10 * math.log10(
-            self.q / ( 4 * math.pi * self.r**2 )
+            ( 4 * math.pi * self.r**2 ) / self.q
             )
         )
 

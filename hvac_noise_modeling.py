@@ -1,9 +1,9 @@
 from __future__ import annotations
+from typing import Optional, Union
 import math
-import abc
 
 class OctaveBands:
-    def __init__(self, data=None):
+    def __init__(self, data: Union[list[float], float] = 0):
         self.ob = {
             63: 0,
             125: 0,
@@ -15,23 +15,21 @@ class OctaveBands:
             8000: 0,
             }
 
-        if data is not None:
-            self._apply_input_data(data)
-
-    def _apply_input_data(self, data):
-        if len(data) == 8:
-            for key, num in zip(self.ob.keys(), data):
+        if isinstance(data, list):
+            if len(data) != 8:
+                raise ValueError("Octave_Band takes data list of length 1, 8, or None")
+            for key, num in zip(self.ob, data):
                 if num < 0:
-                    raise ValueError("No negative values")
-                self.ob[key] = num
-        elif len(data) == 1:
-            if data[0] < 0:
-                raise ValueError("No negative values")
-            for key in self.ob.keys():
+                    self.ob[key] = num
+        elif isinstance(data, float):
+            for key in self.ob:
                 self.ob[key] = data[0]
         else:
-            raise ValueError("Octave_Band takes data list of length 1, 8, or None")
+            raise TypeError("data arg must be float or list (of len 8)")
 
+    def reset(self):
+        for key in self.ob:
+            self.ob[key] = 0
 
     def noise_criteria(self) -> tuple[float, int]:
         """ TODO Return NC and offending octave band frequency. """
@@ -44,14 +42,14 @@ class OctaveBands:
     def linear_addition(self, other: OctaveBands) -> OctaveBands:
         """ Returns an OB object with the linear addition of a and b. """
         c = OctaveBands()
-        for key in c.ob.keys():
+        for key in c.ob:
             c.ob[key] = self.ob[key] + other.ob[key]
         return c
 
     def decibel_addition(self, other: OctaveBands) -> OctaveBands:
         """ Returns an OB object with the decibel addition of a and b. """
         c = OctaveBands()
-        for key, av, bv in zip(c.ob.keys(), self.ob.values(), other.ob.values()):
+        for key, av, bv in zip(c.ob, self.ob.values(), other.ob.values()):
             self_intensity = 10**(av / 10) if av >= 0 else 0
             other_intensity = 10**(bv / 10) if bv >= 0 else 0
             c.ob[key] = 10*math.log10(self_intensity + other_intensity)
@@ -63,14 +61,17 @@ class OctaveBands:
         No negatives.
         """
         c = OctaveBands()
-        for key in c.ob.keys():
+        for key in c.ob:
             c.ob[key] = max(0, self.ob[key] - other.ob[key])
         return c
+
 
 
 class Node:
     def __init__(self, title=""):
         self.title = title
+        self.input_nodes = set()
+        self.output_nodes = set()
         self.ob_input = OctaveBands()
 
     def ob_regen(self):
@@ -88,10 +89,10 @@ class Node:
 class Source(Node):
     def __init__(self, obdata, title=""):
         super().__init__(title)
-        self.ob = OctaveBands(obdata)
+        self.levels = OctaveBands(obdata)
 
 
-class Straight_Duct(Node):
+class StraightDuct(Node):
     def __init__(self, h, w, l, liner, title=""):
         super().__init__(title)
         self.h = h
@@ -104,23 +105,22 @@ class Straight_Duct(Node):
         return OctaveBands()
 
 
-class Elbow_Duct(Node):
-    def __init__(self, h, w, l, liner, vertical:bool, title=""):
+class ElbowDuct(Node):
+    def __init__(self, h, w, liner, vertical:bool, title=""):
         super().__init__(title)
         self.h = h
         self.w = w
-        self.l = l
         self.vertical = vertical
         self.liner = liner
 
     def ob_regen(self):
         """ TODO lookup table for CFM vs size etc."""
-        dim = self.h if self.vertical else self.w
+        bend_dimension = self.h if self.vertical else self.w
         return OctaveBands()
 
     def ob_atten(self):
         """ TODO lookup table for h/w/liner combo """
-        dim = self.h if self.vertical else self.w
+        bend_dimension = self.h if self.vertical else self.w
         return OctaveBands()
 
 
@@ -147,3 +147,20 @@ class FreeFieldReceiver(Node):
 #     def ob_atten(self):
 #         """ TODO lookup table for h/w/liner combo """
 #         return OctaveBands()
+
+class Path:
+    def __init__(self):
+        self.head = Node("head")
+
+    def check_for_cycles(self):
+        """ TODO """
+        pass
+
+    def crunch_calcs(self):
+        """ TODO """
+        pass
+
+    def print_report(self):
+        """ TODO """
+        pass
+
